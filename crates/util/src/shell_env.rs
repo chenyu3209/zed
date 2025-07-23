@@ -3,6 +3,35 @@
 use anyhow::{Context as _, Result};
 use collections::HashMap;
 
+#[cfg(windows)]
+pub fn capture(directory: &std::path::Path) -> Result<collections::HashMap<String, String>> {
+    use std::os::windows::process::CommandExt;
+
+    let zed_path = super::get_shell_safe_zed_path()?;
+    let mut command_string = String::new();
+    command_string.push_str(&format!("cd '{}';", directory.display()));
+    command_string.push_str(&format!("& {} --printenv", zed_path));
+
+    // Run the command on Windows without displaying a console window.
+    let mut command = crate::command::new_std_command(crate::get_windows_system_shell());
+    command.args(["-NoProfile", "-Command", &command_string]);
+    let output = command.output()?;
+
+    anyhow::ensure!(
+        output.status.success(),
+        "PowerShell exited with {}. stdout: {:?}, stderr: {:?}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    let env_output = String::from_utf8_lossy(&output.stdout);
+    let env_map: collections::HashMap<String, String> = serde_json::from_str(&env_output)
+        .with_context(|| "Failed to deserialize environment variables from json")?;
+
+    Ok(env_map)
+}
+
 /// Capture all environment variables from the login shell.
 #[cfg(unix)]
 pub fn capture(directory: &std::path::Path) -> Result<collections::HashMap<String, String>> {

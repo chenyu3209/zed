@@ -922,7 +922,10 @@ impl dap::adapters::DapDelegate for DapAdapterDelegate {
 
     async fn which(&self, command: &OsStr) -> Option<PathBuf> {
         let worktree_abs_path = self.worktree.abs_path();
-        let shell_path = self.shell_env().await.get("PATH").cloned();
+        let mut shell_path = self.shell_env().await.get("PATH").cloned();
+        if shell_path.is_none() {
+            shell_path = self.shell_env().await.get("Path").cloned();
+        }
         which::which_in(command, shell_path.as_ref(), worktree_abs_path).ok()
     }
 

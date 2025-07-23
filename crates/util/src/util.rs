@@ -286,6 +286,21 @@ fn load_shell_from_passwd() -> Result<()> {
     Ok(())
 }
 
+#[cfg(windows)]
+fn get_shell_safe_zed_path() -> anyhow::Result<String> {
+    use anyhow::Context;
+
+    let zed_path = std::env::current_exe()
+        .context("Failed to determine current zed executable path.")?
+        .to_string_lossy()
+        .to_string();
+
+    let zed_path_escaped =
+        shlex::try_quote(&zed_path).context("Failed to shell-escape Zed executable path.")?;
+
+    Ok(zed_path_escaped.to_string())
+}
+
 #[cfg(unix)]
 /// Returns a shell escaped path for the current zed executable
 pub fn get_shell_safe_zed_path() -> anyhow::Result<String> {

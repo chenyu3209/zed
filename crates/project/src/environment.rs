@@ -233,8 +233,23 @@ async fn load_shell_environment(
     Option<HashMap<String, String>>,
     Option<EnvironmentErrorMessage>,
 ) {
-    // TODO the current code works with Unix $SHELL only, implement environment loading on windows
-    (None, None)
+    use util::shell_env;
+
+    let dir_ = _dir.to_owned();
+    let envs = match smol::unblock(move || shell_env::capture(&dir_)).await {
+        Ok(envs) => envs,
+        Err(err) => {
+            util::log_err(&err);
+            return (
+                None,
+                Some(EnvironmentErrorMessage::from_str(
+                    "Failed to load environment variables. See log for details",
+                )),
+            );
+        }
+    };
+
+    (Some(envs), None)
 }
 
 #[cfg(not(any(target_os = "windows", test, feature = "test-support")))]
